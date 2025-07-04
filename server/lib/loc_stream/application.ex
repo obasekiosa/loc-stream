@@ -9,7 +9,7 @@ defmodule LocStream.Application do
   def start(_type, _args) do
     children = [
       LocStreamWeb.Telemetry,
-      # LocStream.Repo,
+      LocStream.Repo,
       {DNSCluster, query: Application.get_env(:loc_stream, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: LocStream.PubSub},
       # Start the Finch HTTP client for sending emails

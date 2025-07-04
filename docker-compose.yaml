@@ -1,6 +1,6 @@
 services:
   database:
-    container_name: postgres
+    container_name: loc_stream_db
     image: 'postgres:latest'
     ports:
       - 15432:5432
