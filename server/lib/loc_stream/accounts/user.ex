@@ -59,9 +59,9 @@ defmodule LocStream.Accounts.User do
   # Can only contain alphanumeric characters (a-z, A-Z, 0-9), underscores (_), and hyphens (-).
   # Cannot start or end with an underscore or hyphen.
   # Cannot contain two consecutive underscores or hyphens (e.g., __, --, _-, -_).
-  defp validate_usernanme(changeset, opts) do
+  defp validate_username(changeset, opts) do
     changeset
-    |> valdate_required([:username])
+    |> validate_required([:username])
     |> validate_format(:username, ~r/^[a-zA-Z0-9](?!.*(?:__|\-\-|\_\-|\-\_))[a-zA-Z0-9_\-]{1,18}[a-zA-Z0-9]$/)
     |> validate_length(:username, min: 3, max: 20)
     |> maybe_validate_unique_username(opts)
