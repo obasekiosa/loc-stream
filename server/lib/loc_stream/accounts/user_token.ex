@@ -78,7 +78,7 @@ defmodule LocStream.Accounts.UserToken do
 
         query =
           from token in by_token_context_and_sent_to_query(hashed_token, "refresh", client_id),
-            join: user in assoc(hashed_token, :user),
+            join: user in assoc(token, :user),
             where: token.inserted_at > ago(@refresh_validity_in_days, "day"),
             select: user
 
@@ -192,7 +192,7 @@ defmodule LocStream.Accounts.UserToken do
   end
 
   def by_token_context_and_sent_to_query(token, context, sent_to) do
-    from UserToken, where: [token: ^token, context: ^context, sent_to: sent_to]
+    from UserToken, where: [token: ^token, context: ^context, sent_to: ^sent_to]
   end
 
   @doc """

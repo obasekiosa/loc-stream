@@ -60,9 +60,11 @@ defmodule LocStream.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
-  def get_user_by_id(id), do: case Repo.get(User, id) do
-    nil -> {:error, :not_found}
-    user -> {:ok, user}
+  def get_user_by_id(id) do
+    case Repo.get(User, id) do
+      nil -> {:error, :not_found}
+      user -> {:ok, user}
+    end
   end
 
   ## User registration
@@ -277,7 +279,7 @@ defmodule LocStream.Accounts do
   end
 
   def delete_all_user_refresh_token(refresh_token, client_id) do
-    user = UserToken.verify_refresh_token_query(refresh_token, "refresh", client_id)
+    user = UserToken.verify_refresh_token_query(refresh_token, client_id)
     |> Repo.one()
 
     UserToken.by_user_and_contexts_query(user, ["refresh"])

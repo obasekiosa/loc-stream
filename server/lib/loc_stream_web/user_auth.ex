@@ -227,22 +227,6 @@ defmodule LocStreamWeb.UserAuth do
 
   defp signed_in_path(_conn), do: ~p"/"
 
-  def fetch_current_user_api(conn, _opts) do
-    user_token = ensure_api_token(conn)
-    user = case user_token do
-      nil -> nil
-      token -> case token
-        |> Accounts.verify_access_token()
-        |> Accounts.validate_token_expiry() do
-          {false, user_claims} -> nil
-          {true, user_claims} -> Accounts.get_user!(user_claims["sub"])
-      end
-    end
-    assign(conn, :current_user, user)
-  end
-
-
-
   @doc """
   Fetches the current user based on the API token in the Authorization header.
   Assigns the user to `conn.assigns.current_user`.
@@ -289,7 +273,7 @@ defmodule LocStreamWeb.UserAuth do
     if refresh_token do
       Accounts.delete_user_refresh_token(refresh_token, client_id)
     end
-    {Accounts.generate_user_refresh_token(user, client_id), Accounts.generate_jwt_token(user, client)}
+    {Accounts.generate_user_refresh_token(user, client_id), Accounts.generate_user_jwt_token(user, client_id)}
   end
 
   def renew_access_token(conn, refresh_token, client_id) do
