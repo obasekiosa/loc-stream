@@ -60,6 +60,11 @@ defmodule LocStream.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  def get_user_by_id(id), do: case Repo.get(User, id) do
+    nil -> {:error, :not_found}
+    user -> user
+  end
+
   ## User registration
 
   @doc """
@@ -224,6 +229,64 @@ defmodule LocStream.Accounts do
     {token, user_token} = UserToken.build_session_token(user)
     Repo.insert!(user_token)
     token
+  end
+
+  @jwt_private_key Application.compile_env(:loc_stream, LocStreamWeb.UserAuth)[:jwt_private_key]
+  @jwt_max_age 60 * 15 # Access Token expires in 15 minutes
+
+  def generate_user_jwt_token(user, client_id) do
+    now = DateTime.to_unix(DateTime.utc_now())
+    claims = %{
+      "iss" => "loc-stream",
+      "aud" => "loc-stream",
+      "sub" => user.id,
+      "username" => user.username,
+      "client_id" => client_id,
+      "iat" => now,
+      "exp" => now + @jwt_max_age
+    }
+
+    # Use the @jwt_private_key (which is already a JWK struct) for signing
+    {_algo, token_map} = JOSE.JWT.sign(@jwt_private_key, claims)
+    "#{token_map["protected"]}.#{token_map["payload"]}.#{token_map["signature"]}"
+  end
+
+  def generate_user_refresh_token(user, client_id) do
+    {token, user_token} = UserToken.build_refresh_token(user, client_id)
+    Repo.insert!(user_token)
+    token
+  end
+
+  def get_user_by_refresh_token(token, client_id) do
+    {:ok, query} = UserToken.verify_refresh_token_query(token, client_id)
+    Repo.one(query)
+  end
+
+  def verify_access_token(token) do
+    {result, token, _sig} = JOSE.JWT.verify_strict(@jwt_private_key, ["ES256"], token)
+    {_remenat, token_map} = JOSE.JWT.to_map(token)
+
+    case result do
+      false -> {:error, :invalid_token}
+      true -> if Map.get(token_map, "exp") && token_map["exp"] >= DateTime.to_unix(DateTime.utc_now()) do
+        {:ok, token_map}
+      else
+        {:error, :access_token_expired}
+      end
+    end
+  end
+
+  def delete_all_user_refresh_token(refresh_token, client_id) do
+    user = UserToken.verify_refresh_token_query(refresh_token, "refresh", client_id)
+    |> Repo.one()
+
+    UserToken.by_user_and_contexts_query(user, ["refresh"])
+    |> Repo.delete()
+  end
+
+  def delete_user_refresh_token(refresh_token, client_id) do
+    UserToken.by_token_context_and_sent_to_query(refresh_token, "refresh", client_id)
+    |> Repo.delete()
   end
 
   @doc """

@@ -226,4 +226,82 @@ defmodule LocStreamWeb.UserAuth do
   defp maybe_store_return_to(conn), do: conn
 
   defp signed_in_path(_conn), do: ~p"/"
+
+  def fetch_current_user_api(conn, _opts) do
+    user_token = ensure_api_token(conn)
+    user = case user_token do
+      nil -> nil
+      token -> case token
+        |> Accounts.verify_access_token()
+        |> Accounts.validate_token_expiry() do
+          {false, user_claims} -> nil
+          {true, user_claims} -> Accounts.get_user!(user_claims["sub"])
+      end
+    end
+    assign(conn, :current_user, user)
+  end
+
+
+
+  @doc """
+  Fetches the current user based on the API token in the Authorization header.
+  Assigns the user to `conn.assigns.current_user`.
+  """
+  def fetch_current_user_api(conn, _opts) do
+    user =
+      with {:ok, token} <- ensure_api_token(conn),
+           {:ok, user_claims} <- Accounts.verify_access_token(token), # This should handle expiry
+           {:ok, user} <- Accounts.get_user_by_id(user_claims["sub"]) do
+        user
+      else
+        {:error, :no_token} ->
+          # No token found, or not in "Bearer" format
+          nil
+        {:error, :access_token_expired} ->
+          # Token was valid but expired
+          nil
+        {:error, :invalid_token} ->
+          # Token was malformed or signature invalid
+          nil
+        {:error, :not_found} ->
+          # User associated with token not found in DB (e.g., deleted user)
+          nil
+        _ -> # Catch any other unexpected errors from the chain
+          nil
+      end
+
+    assign(conn, :current_user, user)
+  end
+
+  @doc """
+  Extracts the token from the "Authorization: Bearer <token>" header.
+  Returns {:ok, token} if found, or {:error, :no_token} otherwise.
+  """
+  defp ensure_api_token(conn) do
+    case get_req_header(conn, "authorization") |> List.first() do
+      "Bearer " <> token -> {:ok, token}
+      _ -> {:error, :no_token}
+    end
+  end
+
+  def log_in_user_api(conn, user, client_id, refresh_token \\ nil) do
+
+    if refresh_token do
+      Accounts.delete_user_refresh_token(refresh_token, client_id)
+    end
+    {Accounts.generate_user_refresh_token(user, client_id), Accounts.generate_jwt_token(user, client)}
+  end
+
+  def renew_access_token(conn, refresh_token, client_id) do
+    user = Accounts.get_user_by_refresh_token(refresh_token, client_id)
+    if user == nil do
+      nil
+    else
+      log_in_user_api(conn, user, refresh_token)
+    end
+  end
+
+  def log_out_api(conn, refresh_token, client_id) do
+    Accounts.delete_user_refresh_token(refresh_token, client_id)
+  end
 end
