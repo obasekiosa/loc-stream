@@ -235,7 +235,7 @@ defmodule LocStreamWeb.UserAuth do
     user =
       with {:ok, token} <- ensure_api_token(conn),
            {:ok, user_claims} <- Accounts.verify_access_token(token), # This should handle expiry
-           {:ok, user} <- Accounts.get_user_by_id(user_claims["sub"]) do
+           {:ok, user} <- Accounts.fetch_user_by_id(user_claims["sub"]) do
         user
       else
         {:error, :no_token} ->

@@ -184,6 +184,13 @@ defmodule LocStream.Accounts.UserToken do
     end
   end
 
+  def decode_token_and_get_hash(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} -> :crypto.hash(@hash_algorithm, decoded_token)
+      :error -> nil
+    end
+  end
+
   @doc """
   Returns the token struct for the given token value and context.
   """

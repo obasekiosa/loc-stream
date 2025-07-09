@@ -2,7 +2,7 @@ defmodule LocStream.NumberAgent do
   use Agent
 
   @impl true
-  def start_link(initial_number) when is_integer(initial_number) do
+  def start_link(initial_number) when is_integer(initial_number) do ## todo: update so name opts can be passed down from supervisor
     Agent.start_link(fn -> initial_number end, name: __MODULE__)
   end
 

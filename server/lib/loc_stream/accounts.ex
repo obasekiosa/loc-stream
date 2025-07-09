@@ -60,7 +60,7 @@ defmodule LocStream.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
-  def get_user_by_id(id) do
+  def fetch_user_by_id(id) do
     case Repo.get(User, id) do
       nil -> {:error, :not_found}
       user -> {:ok, user}

@@ -331,6 +331,35 @@ defmodule LocStream.AccountsTest do
     end
   end
 
+  describe "generate_user_refresh_token/2" do
+    setup do
+      %{user: user_fixture(), client_id: "123"}
+    end
+
+    test "generates a token", %{user: user, client_id: client_id} do
+      refresh_token = Accounts.generate_user_refresh_token(user, client_id)
+
+      # ensure token is hashed in db so only user knows the original token
+      refute Repo.get_by(UserToken, token: refresh_token)
+
+      # ensure token is reversible to hash
+      assert token = UserToken.decode_token_and_get_hash(refresh_token)
+
+      assert user_refresh_token = Repo.get_by(UserToken, token: token)
+      assert user_refresh_token.context == "refresh"
+      assert user_refresh_token.sent_to == client_id
+
+      # Creating the same token for another user should fail
+      assert_raise Ecto.ConstraintError, fn ->
+        Repo.insert!(%UserToken{
+          token: user_refresh_token.token,
+          user_id: user_fixture().id,
+          context: "refresh"
+        })
+      end
+    end
+  end
+
   describe "get_user_by_session_token/1" do
     setup do
       user = user_fixture()
