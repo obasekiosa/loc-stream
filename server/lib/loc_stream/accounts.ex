@@ -283,11 +283,12 @@ defmodule LocStream.Accounts do
     |> Repo.one()
 
     UserToken.by_user_and_contexts_query(user, ["refresh"])
-    |> Repo.delete()
+    |> Repo.delete_all()
   end
 
   def delete_user_refresh_token(refresh_token, client_id) do
-    UserToken.by_token_context_and_sent_to_query(refresh_token, "refresh", client_id)
+    UserToken.by_token_context_and_sent_to_query(UserToken.decode_token_and_get_hash(refresh_token), "refresh", client_id)
+    |> Repo.one()
     |> Repo.delete()
   end
 
