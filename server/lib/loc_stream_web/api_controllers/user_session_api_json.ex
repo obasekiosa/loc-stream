@@ -1,12 +1,12 @@
 defmodule LocStreamWeb.UserSessionApiJSON do
   use LocStreamWeb, :controller
 
-  def create(%{refresh_token: refresh, jwt: jwt, client_id: client_id}) do
-    %{status: "ok", refresh_token: refresh, jwt: jwt, client_id: client_id}
+  def create(%{model: model}) do
+    Map.put(model, :status, "ok")
   end
 
-  def update(params) do
-    %{status: "ok_update"}
+  def update(%{model: model}) do
+    Map.put(model, :status, "ok")
   end
 
   def delete(params) do

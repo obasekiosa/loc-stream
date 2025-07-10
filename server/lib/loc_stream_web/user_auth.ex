@@ -272,7 +272,7 @@ defmodule LocStreamWeb.UserAuth do
   end
 
   def log_in_user_api(conn, user, client_id, refresh_token \\ nil) do
-
+    ## todo: peform in a transaction
     if refresh_token do
       Accounts.delete_user_refresh_token(refresh_token, client_id)
     end
@@ -288,7 +288,7 @@ defmodule LocStreamWeb.UserAuth do
     end
   end
 
-  def log_out_api(conn, refresh_token, client_id) do
+  def log_out_api(_conn, refresh_token, client_id) do
     Accounts.delete_user_refresh_token(refresh_token, client_id)
   end
 end
