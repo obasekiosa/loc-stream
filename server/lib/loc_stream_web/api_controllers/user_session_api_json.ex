@@ -1,7 +1,7 @@
 defmodule LocStreamWeb.UserSessionApiJSON do
   use LocStreamWeb, :controller
 
-  def create(%{refresh_token: refresh, jwt: jwt, , client_id: client_id}) do
+  def create(%{refresh_token: refresh, jwt: jwt, client_id: client_id}) do
     %{status: "ok", refresh_token: refresh, jwt: jwt, client_id: client_id}
   end
 
