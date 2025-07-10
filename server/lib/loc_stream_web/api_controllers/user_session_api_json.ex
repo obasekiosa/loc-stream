@@ -9,11 +9,11 @@ defmodule LocStreamWeb.UserSessionApiJSON do
     Map.put(model, :status, "ok")
   end
 
-  def delete(params) do
-    %{status: "ok_delete"}
+  def delete(%{model: model}) do
+    Map.put(model, :status, "ok")
   end
 
-  def register(params) do
+  def register(_params) do
     %{status: "ok"}
   end
 

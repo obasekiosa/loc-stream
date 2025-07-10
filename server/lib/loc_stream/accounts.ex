@@ -294,9 +294,11 @@ defmodule LocStream.Accounts do
   end
 
   def delete_user_refresh_token(refresh_token, client_id) do
-    UserToken.by_token_context_and_sent_to_query(UserToken.decode_token_and_get_hash(refresh_token), "refresh", client_id)
-    |> Repo.one()
-    |> Repo.delete()
+    case UserToken.by_token_context_and_sent_to_query(UserToken.decode_token_and_get_hash(refresh_token), "refresh", client_id)
+          |> Repo.one() do
+      nil -> {:error, :not_found}
+      token -> Repo.delete(token)
+    end
   end
 
   @doc """

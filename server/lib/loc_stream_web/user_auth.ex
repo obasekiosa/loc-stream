@@ -250,17 +250,11 @@ defmodule LocStreamWeb.UserAuth do
         {:error, :not_found} ->
           # User associated with token not found in DB (e.g., deleted user)
           nil
-        _ -> # Catch any other unexpected errors from the chain
-          nil
       end
 
     assign(conn, :current_user, user)
   end
 
-  @doc """
-  Extracts the token from the "Authorization: Bearer <token>" header.
-  Returns {:ok, token} if found, or {:error, :no_token} otherwise.
-  """
   defp ensure_api_token(conn) do
     case get_req_header(conn, "authorization") do
       [header] -> case header do
@@ -271,7 +265,7 @@ defmodule LocStreamWeb.UserAuth do
     end
   end
 
-  def log_in_user_api(conn, user, client_id, refresh_token \\ nil) do
+  def log_in_user_api(_conn, user, client_id, refresh_token \\ nil) do
     ## todo: peform in a transaction
     if refresh_token do
       Accounts.delete_user_refresh_token(refresh_token, client_id)

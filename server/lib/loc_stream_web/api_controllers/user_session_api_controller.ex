@@ -25,7 +25,7 @@ defmodule LocStreamWeb.UserSessionApiController do
     |> render(:error, errors: Validator.format_errors(changeset))
   end
 
-  def register(conn, params) do
+  def register(conn, _params) do
     render(conn, :register, name: "up")
   end
 
@@ -35,13 +35,27 @@ defmodule LocStreamWeb.UserSessionApiController do
 
       {:ok, request} ->
         case UserAuth.renew_access_token(conn, request[:refresh_token], request[:client_id]) do
-          nil -> conn |> put_status(:unauthorized) |> render(:error, errors: ["unauthorized"])
+          nil -> render_unauthorized(conn)
           {refresh_token, jwt} -> render(conn, :update, model: %{refresh_token: refresh_token, jwt: jwt, client_id: request[:client_id]})
         end
     end
   end
 
+  defp render_unauthorized(conn) do
+    conn
+    |> put_status(:unauthorized)
+    |> render(:error, errors: ["unauthorized"])
+  end
+
   def delete(conn, params) do
-    render(conn, :delete, name: "de")
+    case Validator.validate_log_out_request(params) do
+      {:error, changeset} -> render_bad_request(conn, changeset)
+
+      {:ok, request} ->
+        case UserAuth.log_out_api(conn, request[:refresh_token], request[:client_id]) do
+          {:error, _} -> render_unauthorized(conn)
+          {:ok, token_struct} -> render(conn, :delete, model: %{client_id: token_struct.sent_to})
+        end
+    end
   end
 end

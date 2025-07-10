@@ -40,6 +40,19 @@ defmodule LocStreamWeb.Validators.UserSessionApiValidator do
     |> apply_action(:validate)
   end
 
+
+  @log_out_request_schema %{
+    refresh_token: :string,
+    client_id: :string
+  }
+
+  def validate_log_out_request(params, _opts \\ []) do
+    {%{}, @log_out_request_schema}
+    |> cast(params, Map.keys(@log_out_request_schema))
+    |> validate_required([:refresh_token, :client_id])
+    |> apply_action(:validate)
+  end
+
   def format_errors(changeset) do
     traverse_errors(changeset, fn {msg, opts} ->
       # Replace placeholders like %{count}
