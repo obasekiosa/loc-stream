@@ -284,7 +284,7 @@ defmodule LocStreamWeb.UserAuth do
     if user == nil do
       nil
     else
-      log_in_user_api(conn, user, refresh_token)
+      log_in_user_api(conn, user, client_id, refresh_token)
     end
   end
 
