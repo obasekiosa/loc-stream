@@ -262,8 +262,11 @@ defmodule LocStreamWeb.UserAuth do
   Returns {:ok, token} if found, or {:error, :no_token} otherwise.
   """
   defp ensure_api_token(conn) do
-    case get_req_header(conn, "authorization") |> List.first() do
-      "Bearer " <> token -> {:ok, token}
+    case get_req_header(conn, "authorization") do
+      [header] -> case header do
+          "Bearer " <> token -> {:ok, token}
+          _ -> {:error, :no_token}
+        end
       _ -> {:error, :no_token}
     end
   end
