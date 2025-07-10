@@ -93,6 +93,18 @@ defmodule LocStream.Accounts do
     |> Repo.insert()
   end
 
+  def register_user_with_confirmation(attrs, confirmation_url_fun) do
+    with {:ok, user} <- register_user(attrs),
+        {:ok, _} <- deliver_user_confirmation_instructions(
+            user,
+            confirmation_url_fun
+          ) do
+      {:ok, user}
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking user changes.
 

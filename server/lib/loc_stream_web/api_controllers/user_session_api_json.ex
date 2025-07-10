@@ -13,8 +13,8 @@ defmodule LocStreamWeb.UserSessionApiJSON do
     Map.put(model, :status, "ok")
   end
 
-  def register(_params) do
-    %{status: "ok"}
+  def register(%{model: model}) do
+    Map.put(model, :status, "ok")
   end
 
   def error(%{errors: errors}) do

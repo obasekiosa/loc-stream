@@ -10,6 +10,7 @@ defmodule LocStreamWeb.Validators.UserSessionApiValidator do
 
 
   def validate_log_in_request(params, opts \\ []) do
+    ## todo: allow login with email on api
     {%{}, @login_request_schema}
     |> cast(params, Map.keys(@login_request_schema))
     |> validate_required([:username, :password])
@@ -57,7 +58,11 @@ defmodule LocStreamWeb.Validators.UserSessionApiValidator do
     traverse_errors(changeset, fn {msg, opts} ->
       # Replace placeholders like %{count}
       Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
+        if is_list(value) do
+          acc ## todo: convert list to string and use in replace function below
+        else
+          String.replace(acc, "%{#{key}}", to_string(value))
+        end
       end)
     end)
   end

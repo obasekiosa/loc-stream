@@ -25,8 +25,16 @@ defmodule LocStreamWeb.UserSessionApiController do
     |> render(:error, errors: Validator.format_errors(changeset))
   end
 
-  def register(conn, _params) do
-    render(conn, :register, name: "up")
+  def register(conn, params) do
+    case Accounts.register_user_with_confirmation(params, &url(~p"/users/confirm/#{&1}")) do
+      {:error, %Ecto.Changeset{}=changeset} -> render_bad_request(conn, changeset)
+      {:ok, user} ->
+        client_id = Map.get(params, :client_id, Ecto.UUID.generate())
+        model = Map.take(user, [:username, :email])
+        |> Map.put(:client_id, client_id )
+        |> Map.put(:user_id, user.id)
+        render(conn, :register, model: model)
+    end
   end
 
   def update(conn, params) do
