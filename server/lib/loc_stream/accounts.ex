@@ -286,11 +286,16 @@ defmodule LocStream.Accounts do
   end
 
   def delete_all_user_refresh_token(refresh_token, client_id) do
-    user = UserToken.verify_refresh_token_query(refresh_token, client_id)
-    |> Repo.one()
-
-    UserToken.by_user_and_contexts_query(user, ["refresh"])
-    |> Repo.delete_all()
+    case UserToken.verify_refresh_token_query(refresh_token, client_id) do
+      :error -> {:error, :invalid_token}
+      {:ok, query} ->
+        if user = Repo.one(query) do
+          UserToken.by_user_and_contexts_query(user, ["refresh"])
+          |> Repo.delete_all()
+        else
+          {:error, :no_token}
+        end
+    end
   end
 
   def delete_user_refresh_token(refresh_token, client_id) do
