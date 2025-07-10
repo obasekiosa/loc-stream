@@ -239,10 +239,10 @@ defmodule LocStream.Accounts do
     token
   end
 
-  @jwt_private_key Application.compile_env(:loc_stream, LocStreamWeb.UserAuth)[:jwt_private_key]
   @jwt_max_age 60 * 15 # Access Token expires in 15 minutes
 
   def generate_user_jwt_token(user, client_id) do
+    jwt_private_key = Application.get_env(:loc_stream, LocStreamWeb.UserAuth)[:jwt_private_key]
     now = DateTime.to_unix(DateTime.utc_now())
     claims = %{
       "iss" => "loc-stream",
@@ -255,7 +255,7 @@ defmodule LocStream.Accounts do
     }
 
     # Use the @jwt_private_key (which is already a JWK struct) for signing
-    {_algo, token_map} = JOSE.JWT.sign(@jwt_private_key, claims)
+    {_algo, token_map} = JOSE.JWT.sign(jwt_private_key, claims)
     "#{token_map["protected"]}.#{token_map["payload"]}.#{token_map["signature"]}"
   end
 
@@ -271,7 +271,8 @@ defmodule LocStream.Accounts do
   end
 
   def verify_access_token(token) do
-    {result, token, _sig} = JOSE.JWT.verify_strict(@jwt_private_key, ["ES256"], token)
+    jwt_private_key = Application.get_env(:loc_stream, LocStreamWeb.UserAuth)[:jwt_private_key]
+    {result, token, _sig} = JOSE.JWT.verify_strict(jwt_private_key, ["ES256"], token)
     {_remenat, token_map} = JOSE.JWT.to_map(token)
 
     case result do

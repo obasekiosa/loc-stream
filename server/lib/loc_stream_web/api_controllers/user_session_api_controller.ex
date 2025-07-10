@@ -14,7 +14,6 @@ defmodule LocStreamWeb.UserSessionApiController do
           nil -> conn |> put_status(:not_found) |> render(:error, errors: ["user not found"])
           user ->
             {refresh, jwt} = UserAuth.log_in_user_api(conn, user, request[:client_id])
-            conn
             render(conn, :create, refresh_token: refresh, jwt: jwt, client_id: request[:client_id])
         end
     end
