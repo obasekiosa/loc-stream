@@ -15,6 +15,16 @@ defmodule LocStreamWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug :fetch_current_user_api
+  end
+
+  scope "/api", LocStreamWeb do
+    pipe_through :api
+
+    post "/log_in", UserSessionApiController, :create
+    post "/refresh_request", UserSessionApiController, :update
+    delete "/log_out", UserSessionApiController, :delete
+
   end
 
   scope "/", LocStreamWeb do
