@@ -12,6 +12,7 @@ defmodule LocStream.Accounts.UserToken do
   @confirm_validity_in_days 7
   @change_email_validity_in_days 7
   @session_validity_in_days 60
+  @refresh_validity_in_days 90
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
@@ -48,6 +49,10 @@ defmodule LocStream.Accounts.UserToken do
     {token, %UserToken{token: token, context: "session", user_id: user.id}}
   end
 
+  def build_refresh_token(user, client_id) do
+    build_hashed_token(user, "refresh", client_id)
+  end
+
   @doc """
   Checks if the token is valid and returns its underlying lookup query.
 
@@ -64,6 +69,24 @@ defmodule LocStream.Accounts.UserToken do
         select: user
 
     {:ok, query}
+  end
+
+  def verify_refresh_token_query(token, client_id) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} ->
+        hashed_token = :crypto.hash(@hash_algorithm, decoded_token)
+
+        query =
+          from token in by_token_context_and_sent_to_query(hashed_token, "refresh", client_id),
+            join: user in assoc(token, :user),
+            where: token.inserted_at > ago(@refresh_validity_in_days, "day"),
+            select: user
+
+        {:ok, query}
+
+      :error -> :error
+    end
+
   end
 
   @doc """
@@ -161,11 +184,22 @@ defmodule LocStream.Accounts.UserToken do
     end
   end
 
+  def decode_token_and_get_hash(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, decoded_token} -> :crypto.hash(@hash_algorithm, decoded_token)
+      :error -> nil
+    end
+  end
+
   @doc """
   Returns the token struct for the given token value and context.
   """
   def by_token_and_context_query(token, context) do
     from UserToken, where: [token: ^token, context: ^context]
+  end
+
+  def by_token_context_and_sent_to_query(token, context, sent_to) do
+    from UserToken, where: [token: ^token, context: ^context, sent_to: ^sent_to]
   end
 
   @doc """

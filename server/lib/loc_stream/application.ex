@@ -20,6 +20,12 @@ defmodule LocStream.Application do
       LocStreamWeb.Endpoint
     ]
 
+    children = if Mix.env() == :test do
+        children ++ [{LocStream.NumberAgent, 0}]
+      else
+        children
+      end
+
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: LocStream.Supervisor]

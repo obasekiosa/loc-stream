@@ -4,9 +4,11 @@ defmodule LocStream.AccountsFixtures do
   entities via the `LocStream.Accounts` context.
   """
 
-  def unique_user_email, do: "user#{System.unique_integer()}@example.com"
+  alias LocStream.NumberAgent
+
+  def unique_user_email, do: "user#{NumberAgent.get_number()}@example.com"
   def valid_user_password, do: "hello world!"
-  def unique_user_username, do: "user#{System.unique_integer()}"
+  def unique_user_username, do: "user#{NumberAgent.get_number()}"
 
   def valid_user_attributes(attrs \\ %{}) do
     Enum.into(attrs, %{

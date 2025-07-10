@@ -1,4 +1,5 @@
 import Config
+import Dotenvy
 
 # config/runtime.exs is executed for all environments, including
 # during releases. It is executed after compilation and before the
@@ -19,6 +20,31 @@ import Config
 if System.get_env("PHX_SERVER") do
   config :loc_stream, LocStreamWeb.Endpoint, server: true
 end
+
+if Mix.env() in [:dev, :test] do
+  env_dir_prefix = Path.expand(".")
+  source!([
+    Path.absname(".env", env_dir_prefix),
+    System.get_env()
+  ])
+end
+
+
+jwt_private_key_pem = System.get_env("JWT_PRIVATE_KEY_PEM") || env!("JWT_PRIVATE_KEY_PEM", :string)
+
+if is_nil(jwt_private_key_pem) do
+  raise "JWT_PRIVATE_KEY_PEM environment variable is not set. Cannot start application securely."
+end
+
+jwt_private_key = JOSE.JWK.from_pem(jwt_private_key_pem)
+
+if not(is_struct(jwt_private_key)) do
+  raise "JWT_PRIVATE_KEY_PEM environment variable is invalid value. Cannot start application securely."
+end
+
+config :loc_stream, LocStreamWeb.UserAuth,
+  jwt_private_key: jwt_private_key
+
 
 if config_env() == :prod do
   database_url =
