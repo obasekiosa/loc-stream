@@ -20,6 +20,10 @@ defmodule LocStreamWeb.UserSessionApiController do
     end
   end
 
+  def register(conn, params) do
+    render(conn, :register, name: "up")
+  end
+
   def update(conn, params) do
     render(conn, :update, name: "up")
   end

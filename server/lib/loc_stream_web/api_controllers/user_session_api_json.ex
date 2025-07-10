@@ -13,6 +13,10 @@ defmodule LocStreamWeb.UserSessionApiJSON do
     %{status: "ok_delete"}
   end
 
+  def register(params) do
+    %{status: "ok"}
+  end
+
   def error(%{errors: errors}) do
     %{status: "error", errors: errors}
   end
