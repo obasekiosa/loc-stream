@@ -21,10 +21,10 @@ defmodule LocStreamWeb.Router do
   scope "/api", LocStreamWeb do
     pipe_through :api
 
-    post "/register", UserSessionApiController, :register
-    post "/log_in", UserSessionApiController, :create
-    post "/refresh_request", UserSessionApiController, :update
-    delete "/log_out", UserSessionApiController, :delete
+    post "/auth/register", UserSessionApiController, :register
+    post "/auth/log_in", UserSessionApiController, :create
+    post "/auth/refresh", UserSessionApiController, :update
+    delete "/auth/log_out", UserSessionApiController, :delete
 
   end
 
