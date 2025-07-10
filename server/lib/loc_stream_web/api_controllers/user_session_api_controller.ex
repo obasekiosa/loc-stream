@@ -15,7 +15,7 @@ defmodule LocStreamWeb.UserSessionApiController do
           user ->
             {refresh, jwt} = UserAuth.log_in_user_api(conn, user, request[:client_id])
             conn
-            render(conn, :create, refresh_token: refresh, jwt: jwt)
+            render(conn, :create, refresh_token: refresh, jwt: jwt, client_id: request[:client_id])
         end
     end
   end
