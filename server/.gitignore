@@ -35,3 +35,4 @@ loc_stream-*.tar
 npm-debug.log
 /assets/node_modules/
 
+.elixir_ls
