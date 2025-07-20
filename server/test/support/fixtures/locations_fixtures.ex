@@ -6,13 +6,16 @@ defmodule LocStream.LocationsFixtures do
 
 
   def rand_latitude, do: :rand.uniform() * 180 - 90
-  def rand_logitude, do: :rand.uniform() * 360 - 180
+  def rand_longitude, do: :rand.uniform() * 360 - 180
+  def rand_point, do: %Geo.Point{coordinates: {rand_longitude(), rand_latitude()}, srid: 4326}
+  def unique_client_id, do: Ecto.UUID.generate()
 
   def validate_location_update_attribute(attrs \\ %{}, user) do
     Enum.into(attrs, %{
       user_id: user.id,
+      longitude: rand_longitude(),
       latitude: rand_latitude(),
-      longitude: rand_logitude(),
+      client_id: unique_client_id(),
       recorded_at: DateTime.utc_now()
     })
   end

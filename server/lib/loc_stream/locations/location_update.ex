@@ -3,14 +3,17 @@ defmodule LocStream.Locations.LocationUpdate do
   import Ecto.Changeset
   alias LocStream.Locations.LocationUpdate
   alias LocStream.Accounts
+  alias Geo.Point
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   schema "location_updates" do
 
-    field :latitude, :float
-    field :longitude, :float
+    field :location, Geo.PostGIS.Geometry
     field :recorded_at, :utc_datetime_usec
+    field :client_id, :string
+    field :longitude, :float, virtual: true
+    field :latitude, :float, virtual: true
     belongs_to :user, Accounts.User
 
     timestamps(type: :utc_datetime_usec)
@@ -21,10 +24,11 @@ defmodule LocStream.Locations.LocationUpdate do
   """
   def changeset(location_update, attrs) do
     location_update
-    |> cast(attrs, [:user_id, :latitude, :longitude, :recorded_at])
-    |> validate_required([:user_id, :latitude, :longitude, :recorded_at])
+    |> cast(attrs, [:user_id, :longitude, :latitude, :client_id, :recorded_at])
+    |> validate_required([:user_id, :longitude, :latitude, :client_id, :recorded_at])
     |> validate_number(:latitude, greater_than_or_equal_to: -90.0, less_than_or_equal_to: 90.0)
     |> validate_number(:longitude, greater_than_or_equal_to: -180.0, less_than_or_equal_to: 180.0)
+    |> put_location_change()
     |> validate_change(:recorded_at, fn :recorded_at, recorded_at ->
       now = DateTime.utc_now()
       if DateTime.after?(recorded_at, now) do
@@ -35,6 +39,12 @@ defmodule LocStream.Locations.LocationUpdate do
     end)
   end
 
+  def put_location_change(%Ecto.Changeset{changes: %{longitude: long, latitude: lat}}=changeset) do
+    put_change(changeset, :location, build_location_point(long, lat))
+  end
+
+  def put_location_change(changeset), do: changeset
+
    @doc """
   Creates a changeset for batch inserts.
   This is a simplified changeset as `insert_all` doesn't use `cast` or `validate_required` directly.
@@ -44,25 +54,45 @@ defmodule LocStream.Locations.LocationUpdate do
     attrs
     |> Enum.map(fn attr ->
       {status, result} = changeset(%LocationUpdate{}, attr) |> apply_action(:validate)
-      {status, result, attr}
+      attr = case status do
+        :ok -> Map.put(attr, "location", result.location)
+        :error -> Map.put(attr, "errors", result.errors)
+      end
+      {status, attr}
     end)
-    |> Enum.group_by(fn {status, _, _} -> status end)
+    |> Enum.group_by(fn {status, _} -> status end, fn {_, attr} -> attr end)
     |> then(fn group_map ->
       ok_values = Map.get(group_map, :ok)
       err_values = Map.get(group_map, :error)
 
-      ok_attr = if ok_values == nil do
-        []
-      else
-        ok_values |> Enum.map(fn {_, _, attr} -> attr end)
-      end
+      {ok_values || [], err_values || []}
 
-      err_attr = if err_values == nil do
-        []
-      else
-        err_values |> Enum.map(fn {_, _, attr} -> attr end)
-      end
-      {ok_attr, err_attr}
+      # ok_attr = if ok_values == nil do
+      #   []
+      # else
+      #   ok_values |> Enum.map(fn {_, _, attr} -> attr end)
+      # end
+
+      # err_attr = if err_values == nil do
+      #   []
+      # else
+      #   err_values |> Enum.map(fn {_, _, attr} -> attr end)
+      # end
+      # {ok_attr, err_attr}
     end)
   end
+
+  @doc """
+  Helper to build a Geo.Point struct from separate lat/lon fields for convenience.
+  Useful if client sends lat/lon separately.
+  """
+  def build_location_point(longitude, latitude) do
+    %Point{
+      coordinates: {longitude, latitude}, # Geo.Point expects [longitude, latitude]
+      srid: 4326 # WGS84 SRID for GPS coordinates
+    }
+  end
+
+  def build_location_point(%{longitude: long, latitude: lat}), do: build_location_point(long, lat)
+
 end

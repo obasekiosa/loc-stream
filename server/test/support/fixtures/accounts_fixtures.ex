@@ -9,6 +9,7 @@ defmodule LocStream.AccountsFixtures do
   def unique_user_email(n \\ nil), do: "user#{n || NumberAgent.get_number()}@example.com"
   def valid_user_password(n \\ nil), do: "#{n || NumberAgent.get_number()}_Hello_world!"
   def unique_user_username(n \\ nil), do: "user#{n || NumberAgent.get_number()}"
+  def unique_client_id, do: Ecto.UUID.generate()
 
   def valid_user_attributes(attrs \\ %{}) do
     number = NumberAgent.get_number()

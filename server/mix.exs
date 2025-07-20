@@ -32,6 +32,8 @@ defmodule LocStream.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:geo, "~> 4.0"},
+      {:geo_postgis, "~> 3.7"},
       {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.7.21"},
       {:phoenix_ecto, "~> 4.5"},
