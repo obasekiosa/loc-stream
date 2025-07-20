@@ -17,9 +17,20 @@ defmodule LocStream.Locations do
       [%LocationUpdate{}, ...]
 
   """
-  def list_locations do
-    Repo.all(LocationUpdate)
+  def list_locations(opts \\ []) do
+    populate(Repo.all(LocationUpdate), opts)
   end
+
+  defp populate(value, opts) do
+    if Keyword.get(opts, :with_virtual, false) do
+      populate_value(value)
+    else
+      value
+    end
+  end
+
+  defp populate_value(value) when is_list(value), do: Enum.map(value, &LocationUpdate.populate_virtual_fields/1)
+  defp populate_value(value), do: LocationUpdate.populate_virtual_fields(value)
 
   @doc """
   Gets a single location_update.
@@ -35,7 +46,7 @@ defmodule LocStream.Locations do
       ** (Ecto.NoResultsError)
 
   """
-  def get_location_update!(id), do: Repo.get!(LocationUpdate, id)
+  def get_location_update!(id, opts \\ []), do: populate(Repo.get!(LocationUpdate, id), opts)
 
   @doc """
   Creates a location_update.
@@ -49,10 +60,11 @@ defmodule LocStream.Locations do
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_location_update(attrs \\ %{}) do
+  def create_location_update(attrs \\ %{}, opts \\ []) do
     %LocationUpdate{}
     |> LocationUpdate.changeset(attrs)
     |> Repo.insert()
+    |> populate(opts)
   end
 
 
@@ -70,7 +82,7 @@ defmodule LocStream.Locations do
         should_insert_valids_if_invalids_exist = Keyword.get(opts, :try_with_invalids, true)
         if should_insert_valids_if_invalids_exist do
           {insert_count, values} = Repo.insert_all(LocationUpdate, update_lists, returning: [:id, :inserted_at])
-          {insert_count, values, invalid_updates}
+          {insert_count, populate(values, opts), invalid_updates}
         else
           {0, [], invalid_updates}
         end
@@ -99,17 +111,19 @@ defmodule LocStream.Locations do
     |> limit(^limit)
     |> offset(^offset)
     |> Repo.all()
+    |> populate(opts)
   end
 
    @doc """
   Retrieves the single latest location update for a given user.
   """
-  def get_latest_location_for_user(user_id) do
+  def get_latest_location_for_user(user_id, opts \\ []) do
     LocationUpdate
     |> where(user_id: ^user_id)
     |> order_by(desc: :recorded_at)
     |> limit(1)
     |> Repo.one()
+    |> populate(opts)
   end
 
 
@@ -125,10 +139,11 @@ defmodule LocStream.Locations do
       {:error, %Ecto.Changeset{}}
 
   """
-  def update_location_update(%LocationUpdate{} = location_update, attrs) do
+  def update_location_update(%LocationUpdate{} = location_update, attrs, opts \\ []) do
     location_update
     |> LocationUpdate.changeset(attrs)
     |> Repo.update()
+    |> populate(opts)
   end
 
   @doc """
@@ -143,8 +158,9 @@ defmodule LocStream.Locations do
       {:error, %Ecto.Changeset{}}
 
   """
-  def delete_location_update(%LocationUpdate{} = location_update) do
+  def delete_location_update(%LocationUpdate{} = location_update, opts \\ []) do
     Repo.delete(location_update)
+    |> populate(opts)
   end
 
   @doc """

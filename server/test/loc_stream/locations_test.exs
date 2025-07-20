@@ -17,11 +17,11 @@ defmodule LocStream.LocationsTest do
     end
 
     test "list_locations/0 returns all locations", %{location_update: location_update} do
-      assert Locations.list_locations() == [location_update]
+      assert Locations.list_locations([with_virtual: true]) == [location_update]
     end
 
     test "get_location_update!/1 returns the location_update with given id", %{location_update: location_update} do
-      assert Locations.get_location_update!(location_update.id) == location_update
+      assert Locations.get_location_update!(location_update.id, [with_virtual: true]) == location_update
     end
 
     test "create_location_update/1 with valid data creates a location_update", %{user: user} do

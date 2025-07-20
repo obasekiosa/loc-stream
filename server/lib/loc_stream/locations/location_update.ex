@@ -95,4 +95,11 @@ defmodule LocStream.Locations.LocationUpdate do
 
   def build_location_point(%{longitude: long, latitude: lat}), do: build_location_point(long, lat)
 
+  def populate_virtual_fields(%__MODULE__{}=value) do
+    {long, lat} = value.location.coordinates
+    %__MODULE__{value | longitude: long, latitude: lat}
+  end
+  def populate_virtual_fields(nil), do: nil
+  def populate_virtual_fields({:ok, value}), do: {:ok, populate_virtual_fields(value)}
+  def populate_virtual_fields({:error, _}=value), do: value
 end
