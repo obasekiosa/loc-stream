@@ -1,7 +1,7 @@
 services:
   database:
     container_name: loc_stream_db
-    image: 'postgres:latest'
+    image: 'postgis/postgis:16-3.5'
     ports:
       - 15432:5432
     env_file:

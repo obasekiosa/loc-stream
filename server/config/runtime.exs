@@ -45,6 +45,12 @@ end
 config :loc_stream, LocStreamWeb.UserAuth,
   jwt_private_key: jwt_private_key
 
+Postgrex.Types.define(LocStream.PostgresTypes,
+            [Geo.PostGIS.Extension] ++ Ecto.Adapters.Postgres.extensions(),
+            json: Jason)
+
+config :loc_stream, LocStream.Repo,
+  types: LocStream.PostgresTypes
 
 if config_env() == :prod do
   database_url =
