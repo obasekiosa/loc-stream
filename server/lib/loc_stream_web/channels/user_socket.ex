@@ -40,7 +40,8 @@ defmodule LocStreamWeb.UserSocket do
   def connect(%{"token" => token}, socket, _connect_info) do
     case verify_token(token) do
       {user_id, username, exp} -> {:ok, assign(socket, user_id: user_id, username: username, expires: exp)}
-      nil -> {:error, "Unauthorized"}
+      {:error, :expired} -> {:error, "Expired token"}
+      {:error, _} -> {:error, "Unauthorized"}
     end
   end
 
@@ -49,7 +50,8 @@ defmodule LocStreamWeb.UserSocket do
 
   def verify_token(token) do
     case Accounts.verify_access_token(token) do
-      {:error, _} -> nil
+      {:error, :access_token_expired} -> {:error, :expired}
+      {:error, reason} -> {:error, reason}
       {:ok, claims} -> {claims["sub"], claims["username"], claims["exp"]}
     end
   end
