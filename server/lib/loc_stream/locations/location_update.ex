@@ -102,4 +102,10 @@ defmodule LocStream.Locations.LocationUpdate do
   def populate_virtual_fields(nil), do: nil
   def populate_virtual_fields({:ok, value}), do: {:ok, populate_virtual_fields(value)}
   def populate_virtual_fields({:error, _}=value), do: value
+
+  def to_json(%__MODULE__{}=value) do
+    Map.take(value, [:client_id, :id, :longitude, :latitude, :recorded_at, :user_id, :inserted_at, :updated_at])
+    |> Enum.map(fn {k, v} -> {Atom.to_string(k), v} end)
+    |> Enum.into(%{})
+  end
 end

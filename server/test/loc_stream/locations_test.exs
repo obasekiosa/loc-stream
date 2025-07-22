@@ -25,7 +25,7 @@ defmodule LocStream.LocationsTest do
     end
 
     test "create_location_update/1 with valid data creates a location_update", %{user: user} do
-      valid_attrs = validate_location_update_attribute(user)
+      valid_attrs = valid_location_update_attribute(user)
       assert {:ok, %LocationUpdate{} = _} = Locations.create_location_update(valid_attrs)
     end
 
