@@ -40,7 +40,7 @@ defmodule LocStreamWeb.UserSocket do
   def connect(%{"token" => token}, socket, _connect_info) do
     case verify_token(token) do
       {user_id, username, exp} -> {:ok, assign(socket, user_id: user_id, username: username, expires: exp)}
-      {:error, :expired} -> {:error, "Expired token"}
+      {:error, :expired} -> {:error, "Expired"}
       {:error, _} -> {:error, "Unauthorized"}
     end
   end
