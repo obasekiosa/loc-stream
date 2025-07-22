@@ -1,22 +1,19 @@
 defmodule LocStreamWeb.LocationSyncChannel do
   use LocStreamWeb, :channel
 
+  alias LocStream.Locations
+  alias LocStream.Locations.LocationUpdate
+
   @impl true
   def join("location:user:" <> id, _payload, %{assigns: %{user_id: user_id}}=socket) when user_id == id, do: {:ok, socket}
-  def join(_, _, _), do: {:error, %{reason: "unauthorized"}}
+  def join(_, _, _), do: {:error, %{reason: "Unauthorized"}}
 
-  # Channels can be used in a request/response fashion
-  # by sending replies to requests from the client
+  ## todo: maybe make async, would require a return request id, maybe, client-id_recorded_at
   @impl true
-  def handle_in("ping", payload, socket) do
-    {:reply, {:ok, payload}, socket}
-  end
-
-  # It is also common to receive messages from the client and
-  # broadcast to everyone in the current topic (location_sync:lobby).
-  @impl true
-  def handle_in("shout", payload, socket) do
-    broadcast(socket, "shout", payload)
-    {:noreply, socket}
+  def handle_in("loc_sync_single", payload, socket) do
+    case Locations.create_location_update(Map.put(payload, "user_id", socket.assigns.user_id)) do
+      {:ok, update} -> {:reply, {:ok, %{"data" => LocationUpdate.to_json(update)}}, socket}
+      {:error, changeset} -> {:reply, {:error, %{errors: Utils.format_errors(changeset)}}, socket}
+    end
   end
 end

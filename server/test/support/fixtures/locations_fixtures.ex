@@ -20,6 +20,15 @@ defmodule LocStream.LocationsFixtures do
     })
   end
 
+  def valid_location_update_attribute_no_user(attrs \\ %{}) do
+    Enum.into(attrs, %{
+      longitude: rand_longitude(),
+      latitude: rand_latitude(),
+      client_id: unique_client_id(),
+      recorded_at: DateTime.utc_now()
+    })
+  end
+
   @doc """
   Generate a location_update.
   """
