@@ -21,7 +21,7 @@ if System.get_env("PHX_SERVER") do
   config :loc_stream, LocStreamWeb.Endpoint, server: true
 end
 
-if Mix.env() in [:dev, :test] do
+if config_env() in [:dev, :test] do
   env_dir_prefix = Path.expand(".")
   source!([
     Path.absname(".env", env_dir_prefix),
@@ -63,7 +63,10 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :loc_stream, LocStream.Repo,
-    # ssl: true,
+    ssl: true,
+    ssl_opts: [
+      verify: :verify_none
+    ],
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     socket_options: maybe_ipv6
@@ -80,7 +83,11 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = if System.get_env("ON_RENDER") || false do
+    System.get_env("RENDER_EXTERNAL_HOSTNAME")
+  else
+    System.get_env("PHX_HOST") || "example.com"
+  end
   port = String.to_integer(System.get_env("PORT") || "4000")
 
   config :loc_stream, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
@@ -135,10 +142,10 @@ if config_env() == :prod do
   # Also, you may need to configure the Swoosh API client of your choice if you
   # are not using SMTP. Here is an example of the configuration:
   #
-  #     config :loc_stream, LocStream.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
+  config :loc_stream, LocStream.Mailer,
+    adapter: Swoosh.Adapters.Mailgun,
+    api_key: System.get_env("MAILGUN_API_KEY"),
+    domain: System.get_env("MAILGUN_DOMAIN")
   #
   # For this example you need include a HTTP client required by Swoosh API client.
   # Swoosh supports Hackney and Finch out of the box:

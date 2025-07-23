@@ -20,7 +20,7 @@ defmodule LocStream.Application do
       LocStreamWeb.Endpoint
     ]
 
-    children = if Mix.env() == :test do
+    children = if Application.get_env(:loc_stream, :env) == :test do
         children ++ [{LocStream.NumberAgent, 0}]
       else
         children
