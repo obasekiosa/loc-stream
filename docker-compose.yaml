@@ -26,6 +26,21 @@ services:
       - ${PWD}/pgadmin-data/:/var/lib/pgadmin/
     restart: unless-stopped
 
+  loc_stream:
+    image: arch/loc-stream
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - 4001:4000
+    env_file:
+      - .prod.env
+    networks:
+      - postgres-network
+    depends_on:
+      - database
+
+
 networks: 
   postgres-network:
     driver: bridge

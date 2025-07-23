@@ -11,6 +11,8 @@ config :loc_stream,
   ecto_repos: [LocStream.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :loc_stream, :env, config_env() || :dev
+
 # Configures the endpoint
 config :loc_stream, LocStreamWeb.Endpoint,
   url: [host: "localhost"],
