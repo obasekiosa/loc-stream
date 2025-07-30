@@ -12,7 +12,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "sh.seki.locstream",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "processing"
+        ]
       }
     },
     "android": {
