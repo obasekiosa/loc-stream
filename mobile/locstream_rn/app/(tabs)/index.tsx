@@ -1,71 +1,93 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, View, Text, Button } from 'react-native';
+import { StyleSheet, Button } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 
-import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { PlatformPressable } from '@react-navigation/elements';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Card from '@/components/ui/Card';
 
 
 
-// const LOCATION_TASK_NAME = 'background-location-task';
-// const requestPermissions = async () => {
-//   const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-//   if (foregroundStatus === 'granted') {
-//     const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-//     if (backgroundStatus === 'granted') {
-//       await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-//         accuracy: Location.Accuracy.Balanced,
-//       });
-//     }
-//   }
-// };
+const LOCATION_TASK_NAME = 'background-location-task';
 
-// const PermissionsButton = () => (
-//   <View style={styles.container}>
-//     <Button onPress={requestPermissions} title="Enable background location" />
-//   </View>
-// );
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: {data: {locations: [Location.LocationObject]}, error: any}) => {
+  if (error) {
+      console.error('Background location task error:', error);
+      return;
+    }
+  if (data) {
+    const { locations } = data;
+    const location = locations[0];
+    if (location) {
+      console.log('Location in background:', location.coords);
+      await AsyncStorage.setItem('latestLocation', JSON.stringify(location));
+      // // Send a notification
+      // await Notifications.scheduleNotificationAsync({
+      //   content: {
+      //     title: '📍 Current Location',
+      //     body: `Latitude: ${location.coords.latitude.toFixed(4)}, Longitude: ${location.coords.longitude.toFixed(4)}`,
+      //     sound: false, // No sound for frequent updates
+      //     priority: Notifications.AndroidNotificationPriority.LOW,
+      //     vibrate: [0],
+      //   },
+      //   trigger: null, // Send immediately
+      // });
+    }
+  }
+});
 
 
-// TaskManager.defineTask(LOCATION_TASK_NAME, ({ data, error }) => {
-//   if (error) {
-//     // Error occurred - check `error.message` for more details.
-//     return;
-//   }
-//   if (data) {
-//     const { locations } = data;
-//     // do something with the locations captured in the background
-//   }
-// });
-
+const requestPermissions = async () => {
+  console.log("gotten");
+  const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+  console.log(foregroundStatus);
+  if (foregroundStatus === 'granted') {
+    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+    console.log(backgroundStatus);
+    if (backgroundStatus === 'granted') {
+      console.log("ok")
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Balanced,
+      }).catch(console.error);
+      console.log("gotten");
+    }
+  }
+};
 
 export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [count, setCount] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const tracking = useRef<boolean>(false);
 
 
-   useEffect(() => {
+  useEffect(() => {
     async function getCurrentLocation() {
       
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setErrorMsg('Permission to access location was denied');
         return;
+      }      
+
+      const storedLocation = await AsyncStorage.getItem('latestLocation');
+      // console.log("Stored in background", storedLocation);
+      if (storedLocation !== null) {
+        const loc = JSON.parse(storedLocation) as Location.LocationObject
+        setLocation(loc);
       }
-
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
-      setCount((count) => count + 1)
+      
+      setCount((count) => count + 1);
     }
-
-    
 
     getCurrentLocation();
     const intervalId = setInterval(() => {
@@ -75,12 +97,6 @@ export default function HomeScreen() {
     return () => clearInterval(intervalId);
   }, []);
 
-  let text = 'Waiting...';
-  if (errorMsg) {
-    text = errorMsg;
-  } else if (location) {
-    text = JSON.stringify(location);
-  }
 
   return (
     <ParallaxScrollView
@@ -91,37 +107,203 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
+      <CurrentLocationCard location={location}/>
       <ThemedView style={styles.stepContainer}>
-
-        <ThemedText type="subtitle">Count: {count}</ThemedText>
+      <LocationsTrackedCard count={count}/>
       </ThemedView>
 
-      {
-        location 
-        ? (<View style={styles.infoContainer}>
-          <Text style={styles.label}>Latitude:</Text>
-          <Text style={styles.value}>{location.coords.latitude.toFixed(25)}</Text>
-          <Text style={styles.label}>Longitude:</Text>
-          <Text style={styles.value}>{location.coords.longitude.toFixed(25)}</Text>
-          <Text style={styles.label}>Altitude:</Text>
-          <Text style={styles.value}>
-            {location.coords.altitude ? `${location.coords.altitude.toFixed(2)} m` : 'N/A'}
-          </Text>
-          <Text style={styles.label}>Accuracy:</Text>
-          <Text style={styles.value}>
-            {location.coords.accuracy ? `+/- ${location.coords.accuracy.toFixed(2)} m` : 'N/A'}
-          </Text>
-        </View>)
-      : null
-      }
+      <StartTrackingCard/>
+      <ActiveSessionsCard/>
 
+      <RealTimeSyncCard/>
 
     </ParallaxScrollView>
   );
+}
+
+function StartTrackingCard() {
+  return <Card>
+     <Button onPress={() => requestPermissions()} title="Start Tracking" />
+  </Card>
+}
+
+type CurrentLocationProp = {
+  location: Location.LocationObject | null
+}
+
+function CurrentLocationCard({location}: CurrentLocationProp) {
+  
+
+  if (location === null) {
+    return <Card>
+     <ThemedText type='title'>
+      Current Location
+     </ThemedText>
+     <ThemedText>
+      No location data
+     </ThemedText>
+    </Card>
+  }
+
+  const now = Date.now();
+
+  return <Card>
+    <ThemedText type="title">
+      Current Location
+    </ThemedText>
+
+    <ThemedText>
+      {location.coords.latitude.toFixed(6) + '\u00B0'}{' '}{getLatitudeHemisphere(location.coords.latitude)},
+      {' '}
+      {location.coords.latitude.toFixed(6) + '\u00B0'}{' '}{getLongitudeHemisphere(location.coords.longitude)}
+    </ThemedText>
+
+    <ThemedView style={styles.row}>
+       <ThemedText>
+        Accuracy: {location.coords.accuracy ? `+/- ${location.coords.accuracy.toFixed(2)} m` : 'N/A'}
+      </ThemedText>
+      <ThemedText>
+        Altitude: {location.coords.altitude ? `${location.coords.altitude.toFixed(2)} m` : 'N/A'}
+      </ThemedText>
+    </ThemedView>
+   
+    <ThemedText>
+      {timeAgoFromUnix(now, location.timestamp)}
+    </ThemedText>
+  </Card>
+
+}
+
+function getLatitudeHemisphere(latitude: number): 'N' | 'S' {
+  return latitude >= 0 ? 'N' : 'S';
+}
+
+function getLongitudeHemisphere(longitude: number): 'E' | 'W' {
+  return longitude >= 0 ? 'E' : 'W';
+}
+
+function timeAgoFromUnix(now: number, unixTimestamp: number): string {
+  const secondsElapsed = Math.floor((now - unixTimestamp)/1_000);
+
+  if (secondsElapsed < 5) return "now";
+  if (secondsElapsed < 60) return `${secondsElapsed}s ago`;
+  if (secondsElapsed < 3600) return `${Math.floor(secondsElapsed / 60)}m ago`;
+  if (secondsElapsed < 86400) return `${Math.floor(secondsElapsed / 3600)}h ago`;
+  if (secondsElapsed < 604800) return `${Math.floor(secondsElapsed / 86400)}d ago`;
+
+  const date = new Date(unixTimestamp * 1000);
+  return date.toLocaleDateString(); // fallback: show actual date
+}
+
+
+
+function ActiveSessionsCard() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionCount, setSessionCount] = useState<number|undefined>(undefined);
+  const router = useRouter();
+
+  useEffect(() => {
+    async function fetchSessionCount() {
+      setIsLoading(true);
+      await new Promise<void>(resolve => {
+        setTimeout(() => {
+          resolve();
+        }, 1_000)
+      });
+      setSessionCount(10)
+      setIsLoading(false);
+    }
+
+    fetchSessionCount();
+    const intervalId = setInterval(() => fetchSessionCount(), 5_000);
+
+    return () => clearInterval(intervalId);
+
+  }, [])
+
+
+  let inner = (
+    `Number of Sessions: ${sessionCount}`
+  )
+  if (isLoading) {
+    inner = 'Loading...'
+  }
+
+  return <PlatformPressable disabled={isLoading} onPressIn={() => 
+    {
+      if(isLoading) return;
+      router.navigate("/(tabs)/sessions")
+    }
+  }>
+    <Card>
+      <ThemedText>
+       {inner}
+      </ThemedText>
+    </Card>
+  </PlatformPressable> 
+}
+
+function LocationsTrackedCard({count}: {count: number | undefined}) {
+  const [isLoading, setIsLoading] = useState(false);
+  // const [locationsCount, setLocationsCount] = useState<number|undefined>(count);
+  const router = useRouter();
+  const locationsCount = count
+
+  // useEffect(() => {
+  //   async function fetchLocationsCount() {
+  //     setIsLoading(true);
+  //     await new Promise<void>(resolve => {
+  //       setTimeout(() => {
+  //         resolve();
+  //       }, 1_000)
+  //     });
+  //     // setLocationsCount(count => {
+  //     //   if (count === undefined) return 10;
+  //     //   return count
+  //     // })
+  //     setIsLoading(false);
+  //   }
+
+  //   fetchLocationsCount();
+  //   const intervalId = setInterval(() => fetchLocationsCount(), 5_000);
+
+  //   return () => clearInterval(intervalId);
+
+  // }, [])
+
+
+  let inner = (
+    `Number of Locations Tracked: ${locationsCount}`
+  )
+  if (isLoading) {
+    inner = 'Loading...'
+  }
+
+  return <PlatformPressable disabled={isLoading} onPressIn={() => 
+    {
+      if(isLoading) return;
+      router.navigate("/(tabs)/live")
+    }
+  }>
+    <Card>
+      <ThemedText>
+       {inner}
+      </ThemedText>
+    </Card>
+  </PlatformPressable> 
+}
+
+
+
+
+
+function RealTimeSyncCard() {
+
+  return <Card>
+    <ThemedText>
+      Turn on RealTime Sync
+    </ThemedText>
+  </Card>
 }
 
 const styles = StyleSheet.create({
@@ -180,4 +362,10 @@ const styles = StyleSheet.create({
   buttonContainer: {
     marginTop: 20,
   },
+  row: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 10,
+    backgroundColor: '0x0000'
+  }
 });
