@@ -65,6 +65,13 @@ export default function ParallaxScrollView({
   );
 }
 
+// function FlatList({data}) {
+//   return <Animated.FlatList
+//     data={data}
+//     contentContainerStyle={{}}
+//   />
+// }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
