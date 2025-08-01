@@ -44,6 +44,15 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: {data: {locat
   }
 });
 
+// // --- 2. Configure Notification Handler ---
+// Notifications.setNotificationHandler({
+//   handleNotification: async () => ({
+//     shouldShowAlert: true,
+//     shouldPlaySound: false,
+//     shouldSetBadge: false,
+//   }),
+// });
+
 
 const requestPermissions = async () => {
   console.log("gotten");
@@ -204,6 +213,8 @@ export default function HomeScreen() {
       <StartTrackingCard isTracking={isTracking} setIsTracking={setIsTracking}/>
       <ActiveSessionsCard/>
 
+      <SessionCard isTracking={isTracking}/>
+
       <RealTimeSyncCard/>
 
     </ParallaxScrollView>
@@ -221,6 +232,23 @@ function StartTrackingCard({isTracking, setIsTracking}: StartTrackingCardProp) {
       title={isTracking ? 'Stop Tracking' : 'Start Tracking'}
       onPress={() => setIsTracking(prev => !prev)}
       color={isTracking ? '#ff5c5c' : '#4CAF50'} 
+    />
+  </Card>
+}
+
+
+function SessionCard({isTracking}: {isTracking: boolean}) {
+  return <Card>
+     <Button 
+      title="📍 Start New Session"
+      onPress={() => {
+        if (!isTracking) {
+          alert("Turn on tracking to start a session")
+        } else {
+          console.log("new session started")
+        }
+        
+      }}
     />
   </Card>
 }
@@ -398,9 +426,7 @@ function LocationsTrackedCard({count}: {count: number | undefined}) {
 function RealTimeSyncCard() {
 
   return <Card>
-    <ThemedText>
-      Turn on RealTime Sync
-    </ThemedText>
+    <Button title='☁️ Turn on RealTime sync' color="#34C759"/>
   </Card>
 }
 
