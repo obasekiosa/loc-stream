@@ -28,7 +28,6 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: {data: {locat
     const { locations } = data;
     const location = locations[0];
     if (location) {
-      console.log('Location in background:', location.coords);
       await AsyncStorage.setItem('latestLocation', JSON.stringify(location));
       // // Send a notification
       // await Notifications.scheduleNotificationAsync({
@@ -67,10 +66,96 @@ export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [count, setCount] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const tracking = useRef<boolean>(false);
+  const [isTracking, setIsTracking] = useState<boolean>(false);
 
 
   useEffect(() => {
+
+
+    // This function handles starting and stopping location updates.
+    const manageLocationTracking = async () => {
+      // Check if background tracking is active
+      const isTrackingBackground = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+
+      if (isTracking) {
+        // --- Start tracking ---
+        // Request permissions first
+        const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+        if (foregroundStatus !== 'granted') {
+          setErrorMsg('Foreground location permission to access location was denied');
+          setIsTracking(false);
+          return;
+        }
+
+        const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+        if (backgroundStatus !== 'granted') {
+          setErrorMsg('Background location permission to access location was denied');
+          setIsTracking(false);
+          return;
+        }
+        
+        // Request notification permissions
+        // const { status: notificationStatus } = await Notifications.requestPermissionsAsync();
+        // if (notificationStatus !== 'granted') {
+        //     alert('Notification permissions are required for background updates!');
+        //     setIsTracking(false);
+        //     return;
+        // }
+
+
+        // Start foreground location updates
+        // const locationSubscription = await Location.watchPositionAsync(
+        //   {
+        //     accuracy: Location.Accuracy.BestForNavigation,
+        //     timeInterval: 1000, // 1 second
+        //     distanceInterval: 1, // 1 meter
+        //   },
+        //   (newLocation: Location.LocationObject | null) => {
+        //     setLocation(newLocation);
+        //     setErrorMsg(null);
+        //   }
+        // );
+
+        // Start background location updates
+        if (!isTrackingBackground) {
+            await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+                accuracy: Location.Accuracy.BestForNavigation,
+                timeInterval: 5000, // 5 seconds for background
+                distanceInterval: 10, // 10 meters
+                showsBackgroundLocationIndicator: true,
+                foregroundService: {
+                    notificationTitle: 'Tracking your location',
+                    notificationBody: 'The app is tracking your location in the background.',
+                    notificationColor: '#333333',
+                },
+            });
+        }
+
+        // set current location 
+        const storedLocation = await AsyncStorage.getItem('latestLocation');
+        // console.log("Stored in background", storedLocation);
+        if (storedLocation !== null) {
+          const loc = JSON.parse(storedLocation) as Location.LocationObject
+          setLocation(loc);
+        }
+        
+        setCount((count) => count + 1);
+        
+        // return () => {
+        //   // Cleanup: stop foreground watcher
+        //   locationSubscription.remove();
+        // };
+        return;
+
+      } else {
+        // --- Stop tracking ---
+        if (isTrackingBackground) {
+            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+        }
+        // setLocation(null); // Clear location on screen // keep last location on screen
+      }
+    };
+
     async function getCurrentLocation() {
       
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -89,13 +174,17 @@ export default function HomeScreen() {
       setCount((count) => count + 1);
     }
 
-    getCurrentLocation();
+    // getCurrentLocation();
+    manageLocationTracking();
     const intervalId = setInterval(() => {
-      getCurrentLocation()
+      // getCurrentLocation();
+      manageLocationTracking();
     }, 2000);
 
-    return () => clearInterval(intervalId);
-  }, []);
+    return () => {
+      clearInterval(intervalId);
+    }
+  }, [isTracking]);
 
 
   return (
@@ -112,7 +201,7 @@ export default function HomeScreen() {
       <LocationsTrackedCard count={count}/>
       </ThemedView>
 
-      <StartTrackingCard/>
+      <StartTrackingCard isTracking={isTracking} setIsTracking={setIsTracking}/>
       <ActiveSessionsCard/>
 
       <RealTimeSyncCard/>
@@ -121,9 +210,18 @@ export default function HomeScreen() {
   );
 }
 
-function StartTrackingCard() {
+type StartTrackingCardProp = {
+  isTracking: boolean,
+  setIsTracking: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+function StartTrackingCard({isTracking, setIsTracking}: StartTrackingCardProp) {
   return <Card>
-     <Button onPress={() => requestPermissions()} title="Start Tracking" />
+     <Button 
+      title={isTracking ? 'Stop Tracking' : 'Start Tracking'}
+      onPress={() => setIsTracking(prev => !prev)}
+      color={isTracking ? '#ff5c5c' : '#4CAF50'} 
+    />
   </Card>
 }
 
