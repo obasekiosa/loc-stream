@@ -14,6 +14,8 @@ import { PlatformPressable } from '@react-navigation/elements';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Card from '@/components/ui/Card';
+import { LocationPoint, TrackingStats } from "@/lib/db"
+import db from '@/lib/db';
 
 
 
@@ -29,6 +31,11 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: {data: {locat
     const location = locations[0];
     if (location) {
       await AsyncStorage.setItem('latestLocation', JSON.stringify(location));
+      const locPoint = {
+        ...location.coords,
+        timestamp: location.timestamp
+      }
+      await db.insertLocationPoint(locPoint);
       // // Send a notification
       // await Notifications.scheduleNotificationAsync({
       //   content: {
@@ -54,28 +61,12 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }: {data: {locat
 // });
 
 
-const requestPermissions = async () => {
-  console.log("gotten");
-  const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-  console.log(foregroundStatus);
-  if (foregroundStatus === 'granted') {
-    const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-    console.log(backgroundStatus);
-    if (backgroundStatus === 'granted') {
-      console.log("ok")
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Balanced,
-      }).catch(console.error);
-      console.log("gotten");
-    }
-  }
-};
-
 export default function HomeScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [count, setCount] = useState<number>(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isTracking, setIsTracking] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [stats, setStats] = useState<TrackingStats | null>(null)
 
 
   useEffect(() => {
@@ -148,8 +139,6 @@ export default function HomeScreen() {
           setLocation(loc);
         }
         
-        setCount((count) => count + 1);
-        
         // return () => {
         //   // Cleanup: stop foreground watcher
         //   locationSubscription.remove();
@@ -165,24 +154,6 @@ export default function HomeScreen() {
       }
     };
 
-    async function getCurrentLocation() {
-      
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        return;
-      }      
-
-      const storedLocation = await AsyncStorage.getItem('latestLocation');
-      // console.log("Stored in background", storedLocation);
-      if (storedLocation !== null) {
-        const loc = JSON.parse(storedLocation) as Location.LocationObject
-        setLocation(loc);
-      }
-      
-      setCount((count) => count + 1);
-    }
-
     // getCurrentLocation();
     manageLocationTracking();
     const intervalId = setInterval(() => {
@@ -195,6 +166,38 @@ export default function HomeScreen() {
     }
   }, [isTracking]);
 
+  useEffect(() => {
+
+    async function setUpDb() {
+      setIsLoading(true);
+      await db.initialize();
+      setIsLoading(false);
+    }
+
+    async function fetchStats() {
+      const stats = await db.getStats();
+      setStats(stats)
+    }
+    
+    async function run() {
+      if (!db.isInitialized) {
+        setUpDb().then(fetchStats)
+      } else {
+        fetchStats()
+      }
+    }
+    
+
+    const intervalId = setInterval(async () => await run(), 1_000);
+
+    return () => clearInterval(intervalId);
+
+  }, [isLoading])
+
+  if (!isLoading) {
+    // db.getActiveSessions().then(console.log)
+    // db.getLocationsInRange({startTime: Date.UTC(2025, 6, 2, 23)}).then((value) => console.log(value.locations.slice(0, 2)))
+  }
 
   return (
     <ParallaxScrollView
@@ -205,17 +208,20 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
-      <CurrentLocationCard location={location}/>
-      <ThemedView style={styles.stepContainer}>
-      <LocationsTrackedCard count={count}/>
-      </ThemedView>
+      {isLoading ? 
+        (<ThemedView><ThemedText>Loading...</ThemedText></ThemedView>) :
+        (<>
+          <CurrentLocationCard location={location}/>
+          <LocationsTrackedCard locationsCount={stats && stats.totalLocations} />
 
-      <StartTrackingCard isTracking={isTracking} setIsTracking={setIsTracking}/>
-      <ActiveSessionsCard/>
+          <StartTrackingCard isTracking={isTracking} setIsTracking={setIsTracking}/>
+          <ActiveSessionsCard activeSessionsCount={stats && stats.activeSessions} totalSessions={stats && stats.totalSessions}/>
 
-      <SessionCard isTracking={isTracking}/>
+          <SessionCard isTracking={isTracking}/>
 
-      <RealTimeSyncCard/>
+          <RealTimeSyncCard/>
+        </>)
+      }
 
     </ParallaxScrollView>
   );
@@ -323,41 +329,21 @@ function timeAgoFromUnix(now: number, unixTimestamp: number): string {
 
 
 
-function ActiveSessionsCard() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [sessionCount, setSessionCount] = useState<number|undefined>(undefined);
+function ActiveSessionsCard({totalSessions, activeSessionsCount}: { totalSessions: number | null, activeSessionsCount: number | null }) {
   const router = useRouter();
 
-  useEffect(() => {
-    async function fetchSessionCount() {
-      setIsLoading(true);
-      await new Promise<void>(resolve => {
-        setTimeout(() => {
-          resolve();
-        }, 1_000)
-      });
-      setSessionCount(10)
-      setIsLoading(false);
-    }
-
-    fetchSessionCount();
-    const intervalId = setInterval(() => fetchSessionCount(), 5_000);
-
-    return () => clearInterval(intervalId);
-
-  }, [])
 
 
   let inner = (
-    `Number of Sessions: ${sessionCount}`
+    `Number of Sessions: ${totalSessions}`
   )
-  if (isLoading) {
+  if (totalSessions === null) {
     inner = 'Loading...'
   }
 
-  return <PlatformPressable disabled={isLoading} onPressIn={() => 
+  return <PlatformPressable disabled={totalSessions === null} onPressIn={() => 
     {
-      if(isLoading) return;
+      if(totalSessions !== null) return;
       router.navigate("/(tabs)/sessions")
     }
   }>
@@ -369,45 +355,20 @@ function ActiveSessionsCard() {
   </PlatformPressable> 
 }
 
-function LocationsTrackedCard({count}: {count: number | undefined}) {
-  const [isLoading, setIsLoading] = useState(false);
-  // const [locationsCount, setLocationsCount] = useState<number|undefined>(count);
+function LocationsTrackedCard({locationsCount}: {locationsCount: number | null}) {
   const router = useRouter();
-  const locationsCount = count
-
-  // useEffect(() => {
-  //   async function fetchLocationsCount() {
-  //     setIsLoading(true);
-  //     await new Promise<void>(resolve => {
-  //       setTimeout(() => {
-  //         resolve();
-  //       }, 1_000)
-  //     });
-  //     // setLocationsCount(count => {
-  //     //   if (count === undefined) return 10;
-  //     //   return count
-  //     // })
-  //     setIsLoading(false);
-  //   }
-
-  //   fetchLocationsCount();
-  //   const intervalId = setInterval(() => fetchLocationsCount(), 5_000);
-
-  //   return () => clearInterval(intervalId);
-
-  // }, [])
 
 
   let inner = (
     `Number of Locations Tracked: ${locationsCount}`
   )
-  if (isLoading) {
+  if (locationsCount === null) {
     inner = 'Loading...'
   }
 
-  return <PlatformPressable disabled={isLoading} onPressIn={() => 
+  return <PlatformPressable disabled={locationsCount === null} onPressIn={() => 
     {
-      if(isLoading) return;
+      if(locationsCount !== null) return;
       router.navigate("/(tabs)/live")
     }
   }>
@@ -425,8 +386,10 @@ function LocationsTrackedCard({count}: {count: number | undefined}) {
 
 function RealTimeSyncCard() {
 
+  const router = useRouter()
+
   return <Card>
-    <Button title='☁️ Turn on RealTime sync' color="#34C759"/>
+    <Button title='☁️ Turn on RealTime sync' color="#34C759" onPress={() => router.navigate("/login")}/>
   </Card>
 }
 
